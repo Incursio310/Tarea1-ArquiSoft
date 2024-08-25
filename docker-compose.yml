@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  service1:
+    build: ./services/service1
+    container_name: service1
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./logs/service1:/var/log
+
+  service2:
+    build: ./services/service2
+    container_name: service2
+    ports:
+      - "8002:8001"
+    volumes:
+      - ./logs/service2:/var/log
+
+  promtail:
+    build: ./promtail
+    container_name: promtail
+    volumes:
+      - ./logs/service1:/var/log/service1
+      - ./logs/service2:/var/log/service2
+
+  loki:
+    build: ./loki
+    container_name: loki
+    ports:
+      - "3100:3100"
+
+  grafana:
+    build: ./grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - loki
