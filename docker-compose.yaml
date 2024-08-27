@@ -1,0 +1,80 @@
+version: '3.8'
+
+volumes:
+  grafana-data:
+  loki-data:
+
+networks:
+  loki:
+
+services:
+  loki:
+    image: grafana/loki:2.7.1
+    container_name: loki
+    restart: unless-stopped
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml
+      - loki-data:/var/lib/loki
+    command: -config.file=/etc/loki/loki-config.yml
+    ports:
+      - "3100:3100"
+    networks:
+      - loki
+
+  promtail:
+    image: grafana/promtail:2.7.1
+    container_name: promtail
+    ports:
+      - "9080:9080"
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
+      - /var/log:/var/log
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/promtail-config.yml
+    networks:
+      - loki
+
+  grafana:
+    container_name: grafana
+    restart: unless-stopped
+    image: grafana/grafana:10.0.0
+    volumes:
+    - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - loki
+
+  service1:
+    build: ./services/service1
+    ports:
+      - "8001:8000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      logging: promtail
+      logging_jobname: service1
+    networks:
+      - loki
+
+  service2:
+    build: ./services/service2
+    ports:
+      - "8002:8000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      logging: promtail
+      logging_jobname: service2
+    networks:
+      - loki
